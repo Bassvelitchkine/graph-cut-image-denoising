@@ -6,7 +6,7 @@ class ImageLoader():
     '''
     A class to load images from our data set
     '''
-    def __init__(self, img=0, noise="S&P", seed=0):
+    def __init__(self, img="image0.jpg", noise="S&P", seed=0):
         assert noise in ["S&P", "gaussian", "poisson"], print("noise parameter must be one of 'S&P', 'gaussian' or 'poisson")
         path = f"./data/{img}"
         original_image = self.load_(path)
@@ -49,6 +49,21 @@ class ImageLoader():
                     sample = np.random.random()
                     if sample < 0.05:
                         result[line, column] = 255 if np.random.sample() < 0.5 else 0
+            
+        elif noise_type == "gaussian":
+            for line in range(height):
+                for column in range(width):
+                    noise = np.random.random() * 20
+                    new_pix_val = result[line, column] + noise
+                    result[line, column] = np.clip(new_pix_val, 0, 255)
+
+        elif noise_type == "poisson":
+            for line in range(height):
+                for column in range(width):
+                    noise = np.random.poisson(lam=10) * (-1) ** (line * column)
+                    new_pix_val = result[line, column] + noise
+                    result[line, column] = np.clip(new_pix_val, 0, 255)
+
         return result
 
     def pixel_to_node_(self, pixel):

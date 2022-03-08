@@ -1,4 +1,4 @@
-from matplotlib import image
+from skimage.io import imread
 from skimage.transform import rescale
 import numpy as np
 import networkx as nx
@@ -10,7 +10,7 @@ class ImageLoader():
     def __init__(self, img="image0.jpg", noise="S&P", seed=0, rescale_factor=None):
         assert noise in ["S&P", "gaussian", "poisson"], print("noise parameter must be one of 'S&P', 'gaussian' or 'poisson")
         path = f"./data/{img}"
-        original_image = self.load_(path)
+        original_image = imread(path)
 
         # Define attributes
         self.seed_ = seed
@@ -19,28 +19,22 @@ class ImageLoader():
         if rescale_factor:
             original_image = rescale(original_image, scale=rescale_factor,channel_axis=-1, preserve_range=True)
 
-        self.grayscale_image_ = self.to_grayscale_(original_image)
-        self.noisy_image_ = self.add_noise_(self.grayscale_image_, noise)
+        self.grayscale_image_ = self.__to_grayscale(original_image)
+        self.noisy_image_ = self.__add_noise(self.grayscale_image_, noise)
 
         # Build grap
         G = nx.Graph()
-        G.add_weighted_edges_from(self.build_edge_list_())
+        G.add_edges_from(self.__build_edge_list())
         self.graph_ = G
 
-    def load_(self, path):
-        '''
-        A function to load a specific image from our data set
-        '''
-        return np.array(image.imread(path))
-
-    def to_grayscale_(self, rgb_image):
+    def __to_grayscale(self, rgb_image):
         '''
         A function that loads a RGB image as a grayscale numpy array
         '''
         gray_img = rgb_image @ np.array([0.2989, 0.5870, 0.1140]).T
         return gray_img.astype(np.uint8)
 
-    def add_noise_(self, img, noise_type):
+    def __add_noise(self, img, noise_type):
         '''
         A function that adds noise to an image
         '''
@@ -87,17 +81,7 @@ class ImageLoader():
         line = node // width
         return line, column
 
-    def compute_edge_weight_(self, pixel1, pixel2):
-        '''
-        A function that computes the weight of an edge from pixel1 to pixel2
-        '''
-        val1, val2 = self.noisy_image_[pixel1], self.noisy_image_[pixel2]
-        if val1 != val2:
-            return 1/((float(val1) - float(val2)) ** 2)
-        else:
-            return 2.
-
-    def build_edge_list_(self):
+    def __build_edge_list(self):
         '''
         A function that builds a graph from an image. We draw edges between each pixel and its 8 adjacent pixels.
         That means that when at pixel (i,j), we draw an edge between that pixel and (i, j+1), (i+1, j), (i+1, j+1)
@@ -111,22 +95,19 @@ class ImageLoader():
                 node = self.pixel_to_node_((line, column))
                 adjacent_pixels = [(line, column + 1), (line + 1, column), (line + 1, column + 1)]
                 for adj_pix in adjacent_pixels:
-                    edge_weight = self.compute_edge_weight_((line, column), adj_pix)
-                    edge_list.append((node, self.pixel_to_node_(adj_pix), edge_weight))
+                    edge_list.append((node, self.pixel_to_node_(adj_pix)))
         
         # We handle the bottom border
         for column in range(width - 1):
             node = self.pixel_to_node_((height - 1, column))
             adj_node = self.pixel_to_node_((height- 1, column + 1))
-            edge_weight = self.compute_edge_weight_((height - 1, column), (height - 1, column + 1))
-            edge_list.append((node, adj_node, edge_weight))
+            edge_list.append((node, adj_node))
         
         # We handle the right-hand side border
         for line in range(height - 1):
             node = self.pixel_to_node_((line, width - 1))
             adj_node = self.pixel_to_node_((line + 1, width - 1))
-            edge_weight = self.compute_edge_weight_((line, width - 1), (line + 1, width - 1))
-            edge_list.append((node, adj_node, edge_weight))
+            edge_list.append((node, adj_node))
         
         return edge_list
 

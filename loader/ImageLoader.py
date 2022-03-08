@@ -1,4 +1,5 @@
 from matplotlib import image
+from skimage.transform import rescale
 import numpy as np
 import networkx as nx
 
@@ -6,7 +7,7 @@ class ImageLoader():
     '''
     A class to load images from our data set
     '''
-    def __init__(self, img="image0.jpg", noise="S&P", seed=0):
+    def __init__(self, img="image0.jpg", noise="S&P", seed=0, rescale_factor=None):
         assert noise in ["S&P", "gaussian", "poisson"], print("noise parameter must be one of 'S&P', 'gaussian' or 'poisson")
         path = f"./data/{img}"
         original_image = self.load_(path)
@@ -14,6 +15,10 @@ class ImageLoader():
         # Define attributes
         self.seed_ = seed
         self.original_image_ = original_image
+
+        if rescale_factor:
+            original_image = rescale(original_image, scale=rescale_factor,channel_axis=-1, preserve_range=True)
+
         self.grayscale_image_ = self.to_grayscale_(original_image)
         self.noisy_image_ = self.add_noise_(self.grayscale_image_, noise)
 

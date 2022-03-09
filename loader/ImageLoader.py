@@ -1,41 +1,42 @@
-from matplotlib import image
 import numpy as np
 import networkx as nx
+
+from skimage.io import imread
+from skimage.transform import rescale
 
 class ImageLoader():
     '''
     A class to load images from our data set
     '''
-    def __init__(self, img="image0.jpg", noise="S&P", seed=0):
+    def __init__(self, img="image0.jpg", noise="S&P", seed=0, rescale_factor=None, nb_labels=16):
         assert noise in ["S&P", "gaussian", "poisson"], print("noise parameter must be one of 'S&P', 'gaussian' or 'poisson")
         path = f"./data/{img}"
-        original_image = self.load_(path)
+        original_image = imread(path)
 
         # Define attributes
         self.seed_ = seed
         self.original_image_ = original_image
-        self.grayscale_image_ = self.to_grayscale_(original_image)
-        self.noisy_image_ = self.add_noise_(self.grayscale_image_, noise)
+        self.nb_labels_ = nb_labels
+
+        if rescale_factor:
+            original_image = rescale(original_image, scale=rescale_factor,channel_axis=-1, preserve_range=True)
+
+        self.grayscale_image_ = self.__to_grayscale(original_image)
+        self.noisy_image_ = self.__add_noise(self.grayscale_image_, noise)
 
         # Build grap
-        G = nx.Graph()
-        G.add_weighted_edges_from(self.build_edge_list_())
+        G = nx.DiGraph()
+        G.add_edges_from(self.__build_edge_list())
         self.graph_ = G
 
-    def load_(self, path):
-        '''
-        A function to load a specific image from our data set
-        '''
-        return np.array(image.imread(path))
-
-    def to_grayscale_(self, rgb_image):
+    def __to_grayscale(self, rgb_image):
         '''
         A function that loads a RGB image as a grayscale numpy array
         '''
         gray_img = rgb_image @ np.array([0.2989, 0.5870, 0.1140]).T
         return gray_img.astype(np.uint8)
 
-    def add_noise_(self, img, noise_type):
+    def __add_noise(self, img, noise_type):
         '''
         A function that adds noise to an image
         '''
@@ -66,63 +67,56 @@ class ImageLoader():
 
         return result
 
-    def pixel_to_node_(self, pixel):
+    def __build_edge_list(self):
         '''
-        Converts a pixel to its node number. For a pixel (i, j) (line i, column j), we compute a unique number.
+        A function that builds a graph from an image. The structure of the graph is the same as
+        in Fig 4.3 of Image Denoising with Variational Methods via Graph Cuts (Diplomarbeit)
         '''
-        _, width = self.grayscale_image_.shape
-        return pixel[0] * width + pixel[1]
-    
-    def node_to_pixel_(self, node):
-        '''
-        Given a node number, the function computes the pixel position that corresponds to the node in the original image.
-        '''
-        _, width = self.grayscale_image_.shape
-        column = node % width 
-        line = node // width
-        return line, column
-
-    def compute_edge_weight_(self, pixel1, pixel2):
-        '''
-        A function that computes the weight of an edge from pixel1 to pixel2
-        '''
-        val1, val2 = self.noisy_image_[pixel1], self.noisy_image_[pixel2]
-        if val1 != val2:
-            return 1/((float(val1) - float(val2)) ** 2)
-        else:
-            return 2.
-
-    def build_edge_list_(self):
-        '''
-        A function that builds a graph from an image. We draw edges between each pixel and its 8 adjacent pixels.
-        That means that when at pixel (i,j), we draw an edge between that pixel and (i, j+1), (i+1, j), (i+1, j+1)
-        '''
+        nodes = []
         edge_list = []
         height, width = self.grayscale_image_.shape
+        nb_labels = self.nb_labels_
 
-        # We run through every pixel except those on the right-hand side border and bottom border
-        for line in range(height - 1):
+        for label in range(nb_labels):
+            # We run through every pixel except those on the right-hand side border and bottom border
+            for line in range(height - 1):
+                for column in range(width - 1):
+                    ref_node = (line, column, label)
+                    right_node = (line, column+1, label)
+                    node_below = (line+1, column, label)
+                    edge_list += [(ref_node, right_node), (ref_node, node_below), (right_node, ref_node), (node_below, ref_node)]
+                    nodes += [ref_node, right_node, node_below]
+                    if label < nb_labels - 1:
+                        edge_list += [(ref_node, (line, column, label+1)), ((line, column, label+1), ref_node)]
+            
+            # We handle the bottom border
             for column in range(width - 1):
-                node = self.pixel_to_node_((line, column))
-                adjacent_pixels = [(line, column + 1), (line + 1, column), (line + 1, column + 1)]
-                for adj_pix in adjacent_pixels:
-                    edge_weight = self.compute_edge_weight_((line, column), adj_pix)
-                    edge_list.append((node, self.pixel_to_node_(adj_pix), edge_weight))
-        
-        # We handle the bottom border
-        for column in range(width - 1):
-            node = self.pixel_to_node_((height - 1, column))
-            adj_node = self.pixel_to_node_((height- 1, column + 1))
-            edge_weight = self.compute_edge_weight_((height - 1, column), (height - 1, column + 1))
-            edge_list.append((node, adj_node, edge_weight))
-        
-        # We handle the right-hand side border
-        for line in range(height - 1):
-            node = self.pixel_to_node_((line, width - 1))
-            adj_node = self.pixel_to_node_((line + 1, width - 1))
-            edge_weight = self.compute_edge_weight_((line, width - 1), (line + 1, width - 1))
-            edge_list.append((node, adj_node, edge_weight))
-        
+                ref_node = (height-1, column)
+                right_node = (height-1, column+1)
+                edge_list += [(ref_node, right_node), (right_node, ref_node)]
+                nodes += [ref_node, right_node]
+                if label < nb_labels - 1:
+                    edge_list += [(ref_node, (height-1, column, label+1)), ((height-1, column, label+1), ref_node)]
+            
+            # We handle the right-hand side border
+            for line in range(height - 1):
+                ref_node = (line, width-1)
+                node_below = (line+1, width-1)
+                edge_list += [(ref_node, node_below), (node_below, ref_node)]
+                nodes += [ref_node, node_below]
+                if label < nb_labels - 1:
+                    edge_list += [(ref_node, (line, width-1, label+1)), ((line, width-1, label+1), ref_node)]
+
+        # Finally, we add the source and the sink edges
+        source = "source"
+        sink = "sink"
+        for i in range(height):
+            for j in range(width):
+                node = (i, j, 0)
+                edge_list.append((source, node))
+                node = (i, j, nb_labels-1)
+                edge_list.append((node, sink))
+
         return edge_list
 
     def grayscale(self):

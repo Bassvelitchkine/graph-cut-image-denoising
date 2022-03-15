@@ -15,7 +15,7 @@ class ImageLoader():
 
 
     def data_fitting(self, reconstructed_image, noisy_image):
-        if self.Data_fitting_type == "L2"
+        if self.Data_fitting_type == "L2":
             return np.sum((reconstructed_image - noisy_image)**2)
         else:
             return np.sum(np.abs(reconstructed_image-noisy_image))

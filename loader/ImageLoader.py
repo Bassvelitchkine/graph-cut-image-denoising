@@ -72,52 +72,31 @@ class ImageLoader():
     def __build_edge_list(self):
         '''
         A function that builds a graph from an image. The structure of the graph is the same as
-        in Fig 4.3 of Image Denoising with Variational Methods via Graph Cuts (Diplomarbeit)
+        in Fig 4.1 of Image Denoising with Variational Methods via Graph Cuts (Diplomarbeit)
+        but without the source nor the sink.
         '''
-        nodes = []
         edge_list = []
         height, width = self.grayscale_image_.shape
-        nb_labels = self.nb_labels_
 
-        for label in range(nb_labels):
-            # We run through every pixel except those on the right-hand side border and bottom border
-            for line in range(height - 1):
-                for column in range(width - 1):
-                    ref_node = (line, column, label)
-                    right_node = (line, column+1, label)
-                    node_below = (line+1, column, label)
-                    edge_list += [(ref_node, right_node), (ref_node, node_below), (right_node, ref_node), (node_below, ref_node)]
-                    nodes += [ref_node, right_node, node_below]
-                    if label < nb_labels - 1:
-                        edge_list += [(ref_node, (line, column, label+1)), ((line, column, label+1), ref_node)]
-            
-            # We handle the bottom border
+        # We run through every pixel except those on the right-hand side border and bottom border
+        for line in range(height - 1):
             for column in range(width - 1):
-                ref_node = (height-1, column)
-                right_node = (height-1, column+1)
-                edge_list += [(ref_node, right_node), (right_node, ref_node)]
-                nodes += [ref_node, right_node]
-                if label < nb_labels - 1:
-                    edge_list += [(ref_node, (height-1, column, label+1)), ((height-1, column, label+1), ref_node)]
-            
-            # We handle the right-hand side border
-            for line in range(height - 1):
-                ref_node = (line, width-1)
-                node_below = (line+1, width-1)
-                edge_list += [(ref_node, node_below), (node_below, ref_node)]
-                nodes += [ref_node, node_below]
-                if label < nb_labels - 1:
-                    edge_list += [(ref_node, (line, width-1, label+1)), ((line, width-1, label+1), ref_node)]
-
-        # Finally, we add the source and the sink edges
-        source = "source"
-        sink = "sink"
-        for i in range(height):
-            for j in range(width):
-                node = (i, j, 0)
-                edge_list.append((source, node))
-                node = (i, j, nb_labels-1)
-                edge_list.append((node, sink))
+                ref_node = (line, column)
+                right_node = (line, column+1)
+                node_below = (line+1, column)
+                edge_list += [(ref_node, right_node), (ref_node, node_below), (right_node, ref_node), (node_below, ref_node)]
+        
+        # We handle the bottom border
+        for column in range(width - 1):
+            ref_node = (height-1, column)
+            right_node = (height-1, column+1)
+            edge_list += [(ref_node, right_node), (right_node, ref_node)]
+        
+        # We handle the right-hand side border
+        for line in range(height - 1):
+            ref_node = (line, width-1)
+            node_below = (line+1, width-1)
+            edge_list += [(ref_node, node_below), (node_below, ref_node)]
 
         return edge_list
 

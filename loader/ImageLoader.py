@@ -8,7 +8,7 @@ class ImageLoader():
     '''
     A class to load images from our data set
     '''
-    def __init__(self, img="image0.jpg", noise="S&P", seed=0, rescale_factor=None, nb_labels=16):
+    def __init__(self, img="image0.jpg", noise="S&P", seed=0, rescale_factor=None, nb_labels=16, build_graph=False):
         assert noise in ["S&P", "gaussian", "poisson"], print("noise parameter must be one of 'S&P', 'gaussian' or 'poisson")
         path = f"./data/{img}"
         original_image = imread(path)
@@ -24,10 +24,12 @@ class ImageLoader():
         self.grayscale_image_ = self.__to_grayscale(original_image)
         self.noisy_image_ = self.__add_noise(self.grayscale_image_, noise)
 
-        # Build grap
-        G = nx.DiGraph()
-        G.add_edges_from(self.__build_edge_list())
-        self.graph_ = G
+        if build_graph:
+            G = nx.DiGraph()
+            G.add_edges_from(self.__build_edge_list())
+            self.graph_ = G
+        else:
+            self.graph_ = None
 
     def __to_grayscale(self, rgb_image):
         '''
@@ -141,5 +143,10 @@ class ImageLoader():
         '''
         Returns the graph generated from the image
         '''
+        if not(self.graph_):
+            print("The graph had not been built before. Wait until its created...")
+            G = nx.DiGraph()
+            G.add_edges_from(self.__build_edge_list())
+            self.graph_ = G
         return self.graph_
     

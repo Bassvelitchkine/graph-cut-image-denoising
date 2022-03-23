@@ -14,4 +14,4 @@ print_grayscale(loader.noisy_image())
 
 # Print a few edges from the constructed graph
 graph = loader.graph()
-print(list(graph.edges())[1])
+print(list(graph.edges.data())[:5])

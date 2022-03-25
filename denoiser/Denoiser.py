@@ -40,9 +40,9 @@ class ImageDenoiser():
         the noisy image
         '''
         if self.data_fitting_type == "L2":
-            return np.sum((self.reconstructed_image - self.noisy_image)**2)
+            return np.sum((self.reconstructed_image - self.noisy_image) ** 2)
         else:
-            return np.sum(np.abs(self.reconstructed_image-self.noisy_image))
+            return np.sum(np.abs(self.reconstructed_image - self.noisy_image))
     
     def __psi(self, xi, xj):
         '''
@@ -51,16 +51,16 @@ class ImageDenoiser():
         It's the Anisantropic TV for now.
         '''
         #Transform to int beacause of overflow of uint8
-        return np.abs(int(xi)-int(xj))
+        return np.abs(int(xi) - int(xj))
 
     def __unary_cost(self, x, y, value):
         '''
         Distance between a single pixel of the reconstructed image and a value
         '''
         if self.data_fitting_type == "L2":
-            return (self.reconstructed_image[x,y] - value)**2
+            return (self.reconstructed_image[x, y] - value) ** 2
         else:
-            return np.abs(self.reconstructed_image[x,y] - value)
+            return np.abs(self.reconstructed_image[x, y] - value)
 
     def __energy(self, image):
         '''
@@ -70,8 +70,8 @@ class ImageDenoiser():
         regularization = 0
         for edge in self.G.edges():
             (x1, y1), (x2, y2) = edge
-            ui = image[x1,y1]
-            uj = image[x2,y2]
+            ui = image[x1, y1]
+            uj = image[x2, y2]
             regularization += self.__psi(ui, uj)
         fit_to_data = self.__data_fitting()
         return self.regularization_weight * regularization + fit_to_data
@@ -83,16 +83,18 @@ class ImageDenoiser():
         '''
         G_alpha_beta = nx.DiGraph()
         ebunch_to_add = []
-        for x,y in self.G.nodes():
-            if self.reconstructed_image[x,y] in [alpha, beta]:
-                ebunch_to_add.append( (alpha, (x,y), {"capacity": self.__unary_cost(x,y, alpha)}) )  #Alpha source
-                ebunch_to_add.append( ((x,y), beta, {"capacity": self.__unary_cost(x,y, beta)}) )    #Beta sink
+        for x, y in self.G.nodes():
+            if self.reconstructed_image[x, y] in [alpha, beta]:
+                # Alpha source
+                ebunch_to_add.append( (alpha, (x, y), {"capacity": self.__unary_cost(x, y, alpha)}) )
+                # Beta sink
+                ebunch_to_add.append( ((x, y), beta, {"capacity": self.__unary_cost(x, y, beta)}) )
         for edge in self.G.edges():
             (x1, y1), (x2, y2) = edge
-            if (self.reconstructed_image[x1,y1] in [alpha, beta]) and (self.reconstructed_image[x2,y2] in [alpha, beta]):
-                u1 = self.reconstructed_image[x1,y1]
-                u2 = self.reconstructed_image[x2,y2]
-                ebunch_to_add.append( ((x1,y1), (x2,y2), {"capacity": self.regularization_weight * self.__psi(u1,u2)}) )
+            if (self.reconstructed_image[x1, y1] in [alpha, beta]) and (self.reconstructed_image[x2, y2] in [alpha, beta]):
+                u1 = self.reconstructed_image[x1, y1]
+                u2 = self.reconstructed_image[x2, y2]
+                ebunch_to_add.append( ((x1, y1), (x2, y2), {"capacity": self.regularization_weight * self.__psi(u1, u2)}) )
         G_alpha_beta.add_edges_from(ebunch_to_add)
         return G_alpha_beta
     
@@ -100,23 +102,23 @@ class ImageDenoiser():
         '''
         A public method to perform the alpha-beta swap on the noisy image
         '''
-        for i in tqdm(range(max_iter)):
+        for _ in tqdm(range(max_iter)):
             try_image = np.copy(self.reconstructed_image)
             alpha = np.random.randint(0,256)
             beta = np.random.randint(0,256)
             if alpha == beta:
                 continue
             G_alpha_beta = self.__create_alpha_beta_graph(alpha, beta)
-            cut_value, partition = nx.minimum_cut(G_alpha_beta, alpha, beta)
+            _, partition = nx.minimum_cut(G_alpha_beta, alpha, beta)
             alpha_partition, beta_partition = partition
             for edge in alpha_partition:
                 if type(edge) is tuple:
-                    (x,y) = edge
-                    try_image[x,y] = alpha
+                    (x, y) = edge
+                    try_image[x, y] = alpha
             for edge in beta_partition:
                 if type(edge) is tuple:
-                    (x,y) = edge
-                    try_image[x,y] = beta
+                    (x, y) = edge
+                    try_image[x, y] = beta
             if self.__energy(try_image) < self.__energy(self.reconstructed_image):
                 self.reconstructed_image = np.copy(try_image)
                 print(self.__energy(try_image))

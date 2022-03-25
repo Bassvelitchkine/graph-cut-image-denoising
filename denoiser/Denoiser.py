@@ -14,7 +14,9 @@ class ImageDenoiser():
         regularization_type="Anisotropic TV",
         regularization_weight=1e-2,
         seed=5898624765):
-
+        '''
+        Initialize object
+        '''
         assert regularization_type in ["Anisotropic TV", "Isotropic TV", "Isotropic", "Huber", "Weighted Isotropic", "Weighted Iso. TV", "Anisotr.", "Anisotr. non-quadr."]
         assert data_fitting_type in ["L2", "L1"]
 
@@ -33,22 +35,38 @@ class ImageDenoiser():
 
 
     def __data_fitting(self):
+        '''
+        A method to compute the distance of the reconstructed image to
+        the noisy image
+        '''
         if self.data_fitting_type == "L2":
             return np.sum((self.reconstructed_image - self.noisy_image)**2)
         else:
             return np.sum(np.abs(self.reconstructed_image-self.noisy_image))
     
     def __psi(self, xi, xj):
-        return np.abs(int(xi)-int(xj))   #Anisantropic TV for now. 
+        '''
+        A method to compute the L1 distance between to values
+
+        It's the Anisantropic TV for now.
+        '''
         #Transform to int beacause of overflow of uint8
+        return np.abs(int(xi)-int(xj))
 
     def __unary_cost(self, x, y, value):
+        '''
+        Distance between a single pixel of the reconstructed image and a value
+        '''
         if self.data_fitting_type == "L2":
             return (self.reconstructed_image[x,y] - value)**2
         else:
             return np.abs(self.reconstructed_image[x,y] - value)
 
     def __energy(self, image):
+        '''
+        A method to compute the energy of a whole image
+        as defined in papers
+        '''
         regularization = 0
         for edge in self.G.edges():
             (x1, y1), (x2, y2) = edge
@@ -59,6 +77,10 @@ class ImageDenoiser():
         return self.regularization_weight * regularization + fit_to_data
 
     def __create_alpha_beta_graph(self, alpha, beta):
+        '''
+        A subgraph has to be recreated at each step of the alpha-beta swap algorithm.
+        This method recreates the graph.
+        '''
         G_alpha_beta = nx.DiGraph()
         ebunch_to_add = []
         for x,y in self.G.nodes():
@@ -75,6 +97,9 @@ class ImageDenoiser():
         return G_alpha_beta
     
     def alpha_beta_swap(self, max_iter=100):
+        '''
+        A public method to perform the alpha-beta swap on the noisy image
+        '''
         for i in tqdm(range(max_iter)):
             try_image = np.copy(self.reconstructed_image)
             alpha = np.random.randint(0,256)
@@ -97,4 +122,3 @@ class ImageDenoiser():
                 print(self.__energy(try_image))
 
         return self.__energy(self.reconstructed_image)
-

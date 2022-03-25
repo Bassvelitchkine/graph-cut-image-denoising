@@ -32,45 +32,45 @@ class ImageDenoiser():
         self.regularization_weight = regularization_weight
 
 
-    def data_fitting(self):
+    def __data_fitting(self):
         if self.data_fitting_type == "L2":
             return np.sum((self.reconstructed_image - self.noisy_image)**2)
         else:
             return np.sum(np.abs(self.reconstructed_image-self.noisy_image))
     
-    def psi(self, xi, xj):
+    def __psi(self, xi, xj):
         return np.abs(int(xi)-int(xj))   #Anisantropic TV for now. 
         #Transform to int beacause of overflow of uint8
 
-    def unary_cost(self, x, y, value):
+    def __unary_cost(self, x, y, value):
         if self.data_fitting_type == "L2":
             return (self.reconstructed_image[x,y] - value)**2
         else:
             return np.abs(self.reconstructed_image[x,y] - value)
 
-    def energy(self, image):
+    def __energy(self, image):
         regularization = 0
         for edge in self.G.edges():
             (x1, y1), (x2, y2) = edge
             ui = image[x1,y1]
             uj = image[x2,y2]
-            regularization += self.psi(ui, uj)
-        fit_to_data = self.data_fitting()
+            regularization += self.__psi(ui, uj)
+        fit_to_data = self.__data_fitting()
         return self.regularization_weight * regularization + fit_to_data
 
-    def create_alpha_beta_graph(self, alpha, beta):
+    def __create_alpha_beta_graph(self, alpha, beta):
         G_alpha_beta = nx.DiGraph()
         ebunch_to_add = []
         for x,y in self.G.nodes():
             if self.reconstructed_image[x,y] in [alpha, beta]:
-                ebunch_to_add.append( (alpha, (x,y), {"capacity": self.unary_cost(x,y, alpha)}) )  #Alpha source
-                ebunch_to_add.append( ((x,y), beta, {"capacity": self.unary_cost(x,y, beta)}) )    #Beta sink
+                ebunch_to_add.append( (alpha, (x,y), {"capacity": self.__unary_cost(x,y, alpha)}) )  #Alpha source
+                ebunch_to_add.append( ((x,y), beta, {"capacity": self.__unary_cost(x,y, beta)}) )    #Beta sink
         for edge in self.G.edges():
             (x1, y1), (x2, y2) = edge
             if (self.reconstructed_image[x1,y1] in [alpha, beta]) and (self.reconstructed_image[x2,y2] in [alpha, beta]):
                 u1 = self.reconstructed_image[x1,y1]
                 u2 = self.reconstructed_image[x2,y2]
-                ebunch_to_add.append( ((x1,y1), (x2,y2), {"capacity": self.regularization_weight * self.psi(u1,u2)}) )
+                ebunch_to_add.append( ((x1,y1), (x2,y2), {"capacity": self.regularization_weight * self.__psi(u1,u2)}) )
         G_alpha_beta.add_edges_from(ebunch_to_add)
         return G_alpha_beta
     
@@ -81,7 +81,7 @@ class ImageDenoiser():
             beta = np.random.randint(0,256)
             if alpha == beta:
                 continue
-            G_alpha_beta = self.create_alpha_beta_graph(alpha, beta)
+            G_alpha_beta = self.__create_alpha_beta_graph(alpha, beta)
             cut_value, partition = nx.minimum_cut(G_alpha_beta, alpha, beta)
             alpha_partition, beta_partition = partition
             for edge in alpha_partition:
@@ -92,9 +92,9 @@ class ImageDenoiser():
                 if type(edge) is tuple:
                     (x,y) = edge
                     try_image[x,y] = beta
-            if self.energy(try_image) < self.energy(self.reconstructed_image):
+            if self.__energy(try_image) < self.__energy(self.reconstructed_image):
                 self.reconstructed_image = np.copy(try_image)
-                print(self.energy(try_image))
+                print(self.__energy(try_image))
 
-        return self.energy(self.reconstructed_image)
+        return self.__energy(self.reconstructed_image)
 

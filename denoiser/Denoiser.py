@@ -51,7 +51,7 @@ class ImageDenoiser():
         It's the Anisantropic TV for now.
         '''
         #Transform to int beacause of overflow of uint8
-        return np.abs(int(xi) - int(xj))
+        return np.abs(xi - xj)
 
     def __unary_cost(self, x, y, value):
         '''
@@ -104,7 +104,7 @@ class ImageDenoiser():
         '''
         for _ in tqdm(range(max_iter)):
             try_image = np.copy(self.reconstructed_image)
-            alpha, beta = self.rng_.integers(256), self.rng_.integers(256)
+            alpha, beta = self.rng_.integers(256, dtype=int), self.rng_.integers(256, dtype=int)
             if alpha == beta:
                 continue
             G_alpha_beta = self.__create_alpha_beta_graph(alpha, beta)

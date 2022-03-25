@@ -36,7 +36,7 @@ class ImageLoader():
         A function that loads a RGB image as a grayscale numpy array
         '''
         gray_img = rgb_image @ np.array([0.2989, 0.5870, 0.1140]).T
-        return gray_img.astype(np.uint8)
+        return gray_img.astype(int)
 
     def __add_noise(self, img, noise_type):
         '''

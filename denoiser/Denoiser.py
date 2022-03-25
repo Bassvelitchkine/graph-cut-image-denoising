@@ -104,19 +104,18 @@ class ImageDenoiser():
         '''
         for _ in tqdm(range(max_iter)):
             try_image = np.copy(self.reconstructed_image)
-            alpha = np.random.randint(0,256)
-            beta = np.random.randint(0,256)
+            alpha, beta = self.rng_.integers(256), self.rng_.integers(256)
             if alpha == beta:
                 continue
             G_alpha_beta = self.__create_alpha_beta_graph(alpha, beta)
             _, partition = nx.minimum_cut(G_alpha_beta, alpha, beta)
             alpha_partition, beta_partition = partition
             for edge in alpha_partition:
-                if type(edge) is tuple:
+                if isinstance(edge, tuple):
                     (x, y) = edge
                     try_image[x, y] = alpha
             for edge in beta_partition:
-                if type(edge) is tuple:
+                if isinstance(edge, tuple):
                     (x, y) = edge
                     try_image[x, y] = beta
             if self.__energy(try_image) < self.__energy(self.reconstructed_image):

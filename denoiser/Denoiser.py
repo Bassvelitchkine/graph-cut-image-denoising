@@ -6,13 +6,24 @@ class ImageDenoiser():
     '''
     A class to load denoise images using graph cuts
     '''
-    def __init__(self, G, noisy_image, Data_fitting_type="L2", Regularization_type="Anisotropic TV", regularization_weight=1e-2):
-        assert Regularization_type in ["Anisotropic TV", "Isotropic TV", "Isotropic", "Huber", "Weighted Isotropic", "Weighted Iso. TV", "Anisotr.", "Anisotr. non-quadr."]
-        assert Data_fitting_type in ["L2", "L1"]
+    def __init__(
+        self,
+        G,
+        noisy_image,
+        data_fitting_type="L2",
+        regularization_type="Anisotropic TV",
+        regularization_weight=1e-2,
+        seed=5898624765):
+
+        assert regularization_type in ["Anisotropic TV", "Isotropic TV", "Isotropic", "Huber", "Weighted Isotropic", "Weighted Iso. TV", "Anisotr.", "Anisotr. non-quadr."]
+        assert data_fitting_type in ["L2", "L1"]
+
         self.G = G
-        self.Data_fitting_type = Data_fitting_type
-        self.Regularization = Regularization_type
+        self.data_fitting_type = data_fitting_type
+        self.regularization_type = regularization_type
         self.noisy_image = noisy_image
+
+        self.rng_ = np.random.default_rng(seed=seed)
 
         ## Reconstructed image: We can try to experiment with different initialization
         # self.reconstructed_image = np.random.randint(0,256, size=np.shape(noisy_image))
@@ -22,7 +33,7 @@ class ImageDenoiser():
 
 
     def data_fitting(self):
-        if self.Data_fitting_type == "L2":
+        if self.data_fitting_type == "L2":
             return np.sum((self.reconstructed_image - self.noisy_image)**2)
         else:
             return np.sum(np.abs(self.reconstructed_image-self.noisy_image))
@@ -32,7 +43,7 @@ class ImageDenoiser():
         #Transform to int beacause of overflow of uint8
 
     def unary_cost(self, x, y, value):
-        if self.Data_fitting_type == "L2":
+        if self.data_fitting_type == "L2":
             return (self.reconstructed_image[x,y] - value)**2
         else:
             return np.abs(self.reconstructed_image[x,y] - value)
@@ -85,6 +96,5 @@ class ImageDenoiser():
                 self.reconstructed_image = np.copy(try_image)
                 print(self.energy(try_image))
 
-           
         return self.energy(self.reconstructed_image)
 

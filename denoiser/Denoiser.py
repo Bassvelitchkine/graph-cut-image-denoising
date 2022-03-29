@@ -102,10 +102,12 @@ class ImageDenoiser():
         '''
         A public method to perform the alpha-beta swap on the noisy image
         '''
+        old_energy = self.__energy(self.reconstructed_image)
+        print(f"Start energy : {old_energy}")
         for _ in tqdm(range(max_iter)):
             try_image = np.copy(self.reconstructed_image)
             alpha, beta = self.rng_.integers(256, dtype=int), self.rng_.integers(256, dtype=int)
-            if alpha == beta:
+            if alpha == beta or alpha not in self.reconstructed_image or beta not in self.reconstructed_image:
                 continue
             G_alpha_beta = self.__create_alpha_beta_graph(alpha, beta)
             _, partition = nx.minimum_cut(G_alpha_beta, alpha, beta)
@@ -118,7 +120,10 @@ class ImageDenoiser():
                 if isinstance(edge, tuple):
                     (x, y) = edge
                     try_image[x, y] = beta
-            if self.__energy(try_image) < self.__energy(self.reconstructed_image):
+            new_energy = self.__energy(try_image)
+            if new_energy < old_energy:
+                print(f"Energy decrease : {old_energy} -- > {new_energy}")
+                old_energy = new_energy
                 self.reconstructed_image = np.copy(try_image)
                 print(self.__energy(try_image))
 

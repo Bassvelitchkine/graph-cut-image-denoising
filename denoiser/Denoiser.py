@@ -28,21 +28,21 @@ class ImageDenoiser():
         self.rng_ = np.random.default_rng(seed=seed)
 
         ## Reconstructed image: We can try to experiment with different initialization
-        # self.reconstructed_image = np.random.randint(0,256, size=np.shape(noisy_image))
+        #self.reconstructed_image = np.random.randint(0,256, size=np.shape(noisy_image))
         self.reconstructed_image = np.copy(noisy_image)
 
         self.regularization_weight = regularization_weight
 
 
-    def __data_fitting(self):
+    def __data_fitting(self, image):
         '''
         A method to compute the distance of the reconstructed image to
         the noisy image
         '''
         if self.data_fitting_type == "L2":
-            return np.sum((self.reconstructed_image - self.noisy_image) ** 2)
+            return np.sum((image - self.noisy_image) ** 2)
         else:
-            return np.sum(np.abs(self.reconstructed_image - self.noisy_image))
+            return np.sum(np.abs(image - self.noisy_image))
     
     def __psi(self, xi, xj):
         '''
@@ -62,7 +62,7 @@ class ImageDenoiser():
         else:
             return np.abs(self.reconstructed_image[x, y] - value)
 
-    def __energy(self, image):
+    def energy(self, image):
         '''
         A method to compute the energy of a whole image
         as defined in papers
@@ -73,7 +73,7 @@ class ImageDenoiser():
             ui = image[x1, y1]
             uj = image[x2, y2]
             regularization += self.__psi(ui, uj)
-        fit_to_data = self.__data_fitting()
+        fit_to_data = self.__data_fitting(image)
         return self.regularization_weight * regularization + fit_to_data
 
     def __create_alpha_beta_graph(self, alpha, beta):
@@ -102,10 +102,14 @@ class ImageDenoiser():
         '''
         A public method to perform the alpha-beta swap on the noisy image
         '''
-        for _ in tqdm(range(max_iter)):
+        old_energy = self.energy(self.reconstructed_image)
+        Energy_history = [old_energy]
+        Steps = [0]
+        print(f"Start energy : {old_energy}")
+        for step in tqdm(range(max_iter)):
             try_image = np.copy(self.reconstructed_image)
             alpha, beta = self.rng_.integers(256, dtype=int), self.rng_.integers(256, dtype=int)
-            if alpha == beta:
+            if alpha == beta or alpha not in self.reconstructed_image or beta not in self.reconstructed_image:
                 continue
             G_alpha_beta = self.__create_alpha_beta_graph(alpha, beta)
             _, partition = nx.minimum_cut(G_alpha_beta, alpha, beta)
@@ -118,8 +122,12 @@ class ImageDenoiser():
                 if isinstance(edge, tuple):
                     (x, y) = edge
                     try_image[x, y] = beta
-            if self.__energy(try_image) < self.__energy(self.reconstructed_image):
+            new_energy = self.energy(try_image)
+            if new_energy < old_energy:
+                #print(f"Energy decrease : {old_energy} -- > {new_energy}")
+                Energy_history.append(new_energy)
+                Steps.append(step + 1)
+                old_energy = new_energy
                 self.reconstructed_image = np.copy(try_image)
-                print(self.__energy(try_image))
-
-        return self.__energy(self.reconstructed_image)
+        print(f"End energy : {self.energy(self.reconstructed_image)}")
+        return Energy_history, Steps

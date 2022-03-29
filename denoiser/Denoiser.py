@@ -28,8 +28,8 @@ class ImageDenoiser():
         self.rng_ = np.random.default_rng(seed=seed)
 
         ## Reconstructed image: We can try to experiment with different initialization
-        self.reconstructed_image = np.random.randint(0,256, size=np.shape(noisy_image))
-        #self.reconstructed_image = np.copy(noisy_image)
+        #self.reconstructed_image = np.random.randint(0,256, size=np.shape(noisy_image))
+        self.reconstructed_image = np.copy(noisy_image)
 
         self.regularization_weight = regularization_weight
 

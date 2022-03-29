@@ -8,20 +8,23 @@ class ImageLoader():
     '''
     A class to load images from our data set
     '''
-    def __init__(self, img="image0.jpg", noise="S&P", seed=894397569, rescale_factor=None, nb_labels=16, build_graph=False):
+    def __init__(self, img="image0.jpg", noise="S&P", seed=894397569, rescale_factor=None, build_graph=False):
         assert noise in ["S&P", "gaussian", "poisson"], print("noise parameter must be one of 'S&P', 'gaussian' or 'poisson")
         path = f"./data/{img}"
-        original_image = imread(path)
+        original_image = imread(path).astype(int)
 
         # Define attributes
         self.rng_ = np.random.default_rng(seed=seed)
         self.original_image_ = original_image
-        self.nb_labels_ = nb_labels
+
+
+        if len(np.shape(original_image)) == 3:
+            self.grayscale_image_ = self.__to_grayscale(original_image)
+        else:
+            self.grayscale_image_ = np.copy(original_image)
 
         if rescale_factor:
-            original_image = rescale(original_image, scale=rescale_factor,channel_axis=-1, preserve_range=True)
-
-        self.grayscale_image_ = self.__to_grayscale(original_image)
+            self.grayscale_image_ = rescale(self.grayscale_image_, scale=rescale_factor, preserve_range=True).astype(int)
         self.noisy_image_ = self.__add_noise(self.grayscale_image_, noise)
 
         if build_graph:

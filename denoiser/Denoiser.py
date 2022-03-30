@@ -1,6 +1,6 @@
 import numpy as np
 import networkx as nx
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 class ImageDenoiser():
     '''
@@ -91,22 +91,20 @@ class ImageDenoiser():
                 ebunch_to_add.append( ((x, y), beta, {"capacity": self.__unary_cost(x, y, beta)}) )
         for edge in self.G.edges():
             (x1, y1), (x2, y2) = edge
-            if (self.reconstructed_image[x1, y1] in [alpha, beta]) and (self.reconstructed_image[x2, y2] in [alpha, beta]):
-                u1 = self.reconstructed_image[x1, y1]
-                u2 = self.reconstructed_image[x2, y2]
-                ebunch_to_add.append( ((x1, y1), (x2, y2), {"capacity": self.regularization_weight * self.__psi(u1, u2)}) )
+            if (self.reconstructed_image[x1, y1] in [alpha, beta]) and (self.reconstructed_image[x2, y2] in [alpha, beta]):                
+                ebunch_to_add.append( ((x1, y1), (x2, y2), {"capacity": self.regularization_weight * self.__psi(alpha, beta)}) )
         G_alpha_beta.add_edges_from(ebunch_to_add)
         return G_alpha_beta
     
-    def alpha_beta_swap(self, max_iter=100):
+    def alpha_beta_swap(self, max_iter=100, verbose=True):
         '''
         A public method to perform the alpha-beta swap on the noisy image
         '''
         old_energy = self.energy(self.reconstructed_image)
         Energy_history = [old_energy]
         Steps = [0]
-        print(f"Start energy : {old_energy}")
-        for step in tqdm(range(max_iter)):
+        if verbose: print(f"Start energy : {old_energy}")
+        for step in tqdm(range(max_iter), display=verbose):
             try_image = np.copy(self.reconstructed_image)
             alpha, beta = self.rng_.integers(256, dtype=int), self.rng_.integers(256, dtype=int)
             if alpha == beta or alpha not in self.reconstructed_image or beta not in self.reconstructed_image:
@@ -129,5 +127,5 @@ class ImageDenoiser():
                 Steps.append(step + 1)
                 old_energy = new_energy
                 self.reconstructed_image = np.copy(try_image)
-        print(f"End energy : {self.energy(self.reconstructed_image)}")
+        if verbose: print(f"End energy : {self.energy(self.reconstructed_image)}")
         return Energy_history, Steps

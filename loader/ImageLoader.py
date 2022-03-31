@@ -58,7 +58,7 @@ class ImageLoader():
         elif noise_type == "gaussian":
             for line in range(height):
                 for column in range(width):
-                    noise = self.rng_.random() * 20
+                    noise = self.rng_.random() * 50
                     new_pix_val = result[line, column] + noise
                     result[line, column] = np.clip(new_pix_val, 0, 255)
 

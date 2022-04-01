@@ -6,7 +6,8 @@ from skimage.transform import rescale
 
 class ImageLoader():
     '''
-    A class to load images from our data set
+    A class to load images from a data set, build a noisy version of this image
+    and its 4-connected graph. 
     '''
     def __init__(self, img="image0.jpg", noise="S&P", seed=894397569, rescale_factor=None, build_graph=False):
         assert noise in ["S&P", "gaussian", "poisson"], print("noise parameter must be one of 'S&P', 'gaussian' or 'poisson")
@@ -36,14 +37,40 @@ class ImageLoader():
 
     def __to_grayscale(self, rgb_image):
         '''
-        A function that loads a RGB image as a grayscale numpy array
+        A function that loads a RGB image as a grayscale numpy array.
+
+        Params:
+        -------
+            - rgb_image: np.array as returned by ```skimage.io.imread```
+                The rgb image to turn into grayscale
+        
+        Outputs:
+        --------
+            - gray_img: np.array with int values ranging from 0 to 255
+                The input image turned into grayscale.
         '''
         gray_img = rgb_image @ np.array([0.2989, 0.5870, 0.1140]).T
         return gray_img.astype(int)
 
     def __add_noise(self, img, noise_type):
         '''
-        A function that adds noise to an image
+        A function that adds noise to an image, whether its:
+        - Salt and Pepper (S&P)
+        - Poisson
+        - Gaussian
+        noise.
+
+        Params:
+        ------
+            - img: np.array
+                The image to add noise to.
+            - noise_type: str
+                Either "S&P", "poisson" or "gaussian". The type of noise to subject the image to.
+        
+        Outputs:
+        -------
+            - result: np.array
+                The noisy image.
         '''
         height, width = img.shape
         result = img.copy()
@@ -73,9 +100,23 @@ class ImageLoader():
 
     def __build_edge_list(self):
         '''
-        A function that builds a graph from an image. The structure of the graph is the same as
-        in Fig 4.1 of Image Denoising with Variational Methods via Graph Cuts (Diplomarbeit)
-        but without the source nor the sink.
+        A private method to build an list of edges from an image. The structure of the graph is 4-connected.
+        Therefore, for any pixel (i,j) that's not on the border of the picture, (i,j) is turned into a
+        node, like every other pixel, and has common edges with:
+        - (i+1, j)
+        - (i, j+1)
+        - (i-1, j)
+        - (i, j-1)
+        Hence, the '4-connected' graph.
+
+        Params:
+        ------
+            - None
+        
+        Outputs:
+        --------
+            - edge_list: list
+                The list of every edge in the graph to build.
         '''
         edge_list = []
         height, width = self.grayscale_image_.shape
@@ -122,7 +163,16 @@ class ImageLoader():
 
     def graph(self):
         '''
-        Returns the graph generated from the image
+        Builds and returns the graph generated from the image.
+
+        Params:
+        ------
+            - None
+
+        Outputs:
+        --------
+            - self.graph_: ```nx.Graph```
+                The newly built 4-connected graph.
         '''
         if not(self.graph_):
             print("The graph had not been built before. Wait until its created...")
